@@ -24,26 +24,16 @@ func main() {
 	}
 }
 
-func handleConnection(conn net.Conn) {
-	dec := gob.NewDecoder(conn)
+func handleConnection(inconn net.Conn) {
+	dec := gob.NewDecoder(inconn)
 	r := &R{}
-	fmt.Println(r)
 	dec.Decode(r)
-	fmt.Println(r)
-	cmd := renderCommand(r)
-	shout, err := net.Dial("tcp", ":8081")
+	outconn, err := net.Dial("tcp", ":8081")
+	enc := gob.NewEncoder(outconn)
+	err = enc.Encode(r)
 	if err != nil {
-		// handle shout error
+		// handle outconn error
 	}
-	shout.Write([]byte(cmd))
-	fmt.Printf("redirect : %v\n", cmd)
-}
-
-func renderCommand(r *R) string {
-	rDict := map[string]string{
-		"houdini" : "hython",
-	}
-	runnable := rDict[r.Run]
-	return fmt.Sprintf(`%s %s -c hou.node('%s').render()`, runnable, r.Scene, r.Driver)
+	fmt.Printf("redirect : %v\n", r)
 }
 

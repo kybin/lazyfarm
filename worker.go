@@ -4,10 +4,14 @@ import (
 	"net"
 	"log"
 	"fmt"
-	"strings"
+	"encoding/gob"
 	"bytes"
 	"os/exec"
 )
+
+type R struct {
+	Run, Scene, Driver, Frames string
+}
 
 func main() {
 	ln, err := net.Listen("tcp", ":8081")
@@ -19,17 +23,10 @@ func main() {
 		if err != nil {
 			// handle error
 		}
-		msg := make([]byte, 2048)
-		n, err := conn.Read(msg)
-		if err != nil {
-			// handle error
-		}
-		cmdlist := strings.Split(string(msg[:n]), " ")
-		name := cmdlist[0]
-		args := cmdlist[1:]
-		fmt.Println(name)
-		fmt.Println(args)
-		cmd := exec.Command(name, args...)
+		dec := gob.NewDecoder(conn)
+		r := &R{}
+		dec.Decode(r)
+		cmd := renderCommand(r)
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -39,6 +36,16 @@ func main() {
 			log.Fatal(stderr.String())
 		}
 		fmt.Println(stdout.String())
+		fmt.Println("work done.")
 	}
+}
+
+func renderCommand(r *R) *exec.Cmd {
+	rDict := map[string]string{
+		"houdini" : "hython",
+	}
+	runnable := rDict[r.Run]
+	args := []string{r.Scene, "-c", fmt.Sprintf("hou.node('%s').render()", r.Driver)}
+	return exec.Command(runnable, args...)
 }
 
