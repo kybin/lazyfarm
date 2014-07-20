@@ -24,13 +24,13 @@ func main() {
 	}
 }
 
-func handleConnection(inconn net.Conn) {
-	dec := gob.NewDecoder(inconn)
+func handleConnection(in net.Conn) {
+	decoder := gob.NewDecoder(in)
 	r := &R{}
-	dec.Decode(r)
-	outconn, err := net.Dial("tcp", ":8081")
-	enc := gob.NewEncoder(outconn)
-	err = enc.Encode(r)
+	decoder.Decode(r)
+	out, err := net.Dial("tcp", ":8081")
+	encoder := gob.NewEncoder(out)
+	err = encoder.Encode(r)
 	if err != nil {
 		// handle outconn error
 	}
