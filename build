@@ -1,0 +1,3 @@
+go build client.go r.go util.go
+go build lazyfarm.go r.go util.go
+go build worker.go r.go util.go
