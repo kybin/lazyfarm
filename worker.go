@@ -7,13 +7,53 @@ import (
 	"encoding/gob"
 	"bytes"
 	"os/exec"
+	"time"
 )
 
-type R struct {
-	Run, Scene, Driver, Frames string
+func main() {
+	defer logout()
+	login()
+	time.Sleep(3*time.Second)
+	fmt.Println("bye!")
 }
 
-func main() {
+func login() {
+	conn, err := net.Dial("tcp", ":8080")
+	if err != nil{
+		log.Fatal(err)
+	}
+	enc := gob.NewEncoder(conn)
+	worker := &Worker{":8081"}
+	err = enc.Encode(worker)
+	if err != nil{
+		log.Fatal(err)
+	}
+	err = enc.Encode("waiting")
+	if err != nil{
+		log.Fatal(err)
+	}
+}
+
+func logout() {
+	conn, err := net.Dial("tcp", ":8080")
+	if err != nil{
+		log.Fatal(err)
+	}
+	enc := gob.NewEncoder(conn)
+	worker := &Worker{":8081"}
+	err = enc.Encode(worker)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = enc.Encode("logout")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("logout")
+}
+
+
+func notuse() {
 	ln, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatal(err)
@@ -24,7 +64,7 @@ func main() {
 			// handle error
 		}
 		dec := gob.NewDecoder(conn)
-		r := &R{}
+		r := &Task{}
 		dec.Decode(r)
 		cmd := renderCommand(r)
 		var stdout bytes.Buffer
@@ -40,7 +80,7 @@ func main() {
 	}
 }
 
-func renderCommand(r *R) *exec.Cmd {
+func renderCommand(r *Task) *exec.Cmd {
 	rDict := map[string]string{
 		"houdini" : "hython",
 	}

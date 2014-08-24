@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	r := &Rseq {
+	r := &Job {
 		Run : run,
 		Scene : scene,
 		Driver : driver,
