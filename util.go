@@ -11,3 +11,14 @@ func removeDuplicates(a []int) []int {
         }
         return result
 }
+
+type intSlice []int
+
+func (slice intSlice) pos(value int) int {
+    for p, v := range slice {
+        if (v == value) {
+            return p
+        }
+    }
+    return -1
+}
