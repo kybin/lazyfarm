@@ -1,10 +1,10 @@
 package main
 
-type R struct {
+type Task struct {
 	Run, Scene, Driver, Frame string
 }
 
-type Rseq struct {
+type Job struct {
 	Run, Scene, Driver string
 	Frames []int
 }
