@@ -135,7 +135,8 @@ func listenJob(msgchan chan string, popchan chan string) {
 func handleJob(job *Job, msgchan chan string, popchan chan string) {
 	tasks := jobToTasks(job)
 	for t := range tasks {
-		worker_address := findingWorker()
+		msgchan <- "need"
+		worker_address := <-popchan
 		out, err := net.Dial("tcp", worker_address)
 		encoder := gob.NewEncoder(out)
 		err = encoder.Encode(t)
@@ -149,17 +150,4 @@ func handleJob(job *Job, msgchan chan string, popchan chan string) {
 func jobToTasks(job *Job) []Task {
 	tasks := make([]Task, 0)
 	return tasks
-}
-
-func findingWorker() string {
-	for {
-		for w := range workers {
-			if workers[w] == "waiting" {
-				workers[w] = "processing"
-				return w
-			}
-		}
-		// O.K. We don't have any available worker. Wait a little.
-		time.Sleep(time.Second)
-	}
 }

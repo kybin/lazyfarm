@@ -8,13 +8,25 @@ import (
 	"bytes"
 	"os/exec"
 	"time"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	defer logout()
 	login()
-	time.Sleep(3*time.Second)
-	fmt.Println("bye!")
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("interrupted...")
+		logout()
+		os.Exit(1)
+	}()
+	for {
+		time.Sleep(10*time.Second)
+	}
 }
 
 func login() {
@@ -28,7 +40,7 @@ func login() {
 	if err != nil{
 		log.Fatal(err)
 	}
-	err = enc.Encode("waiting")
+	err = enc.Encode("login")
 	if err != nil{
 		log.Fatal(err)
 	}
