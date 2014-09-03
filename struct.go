@@ -1,7 +1,8 @@
 package main
 
 type Task struct {
-	Run, Scene, Driver, Frame string
+	Run, Scene, Driver string
+	Frame int
 }
 
 type Job struct {

@@ -53,7 +53,7 @@ func workerStack(msgchan chan string, popchan chan string) {
 				log.Fatal(notfound)
 			}
 			stack = append(stack[:idx], stack[idx+1:]...) // delete address from stack
-		case "waiting": // same with login yet.
+		case "waiting", "done": // same with login yet.
 			address = msgs[1]
 			stack = append(stack, address)
 		case "need": // pop
@@ -90,7 +90,8 @@ func listenWorker(msgchan chan string) {
 		fmt.Println("connected")
 		worker, status := handleWorkerConn(conn)
 		switch status {
-		case "login", "logout":
+		case "login", "logout", "done":
+			fmt.Printf("%v, %v\n", worker, status)
 			msgchan <- status + " " + worker.Address
 		default:
 			log.Fatal("unknown status")
@@ -128,15 +129,30 @@ func listenJob(msgchan chan string, popchan chan string) {
 		job := &Job{}
 		decoder := gob.NewDecoder(conn)
 		decoder.Decode(job)
+		fmt.Println("job decoded")
 		go handleJob(job, msgchan, popchan)
 	}
 }
 
 func handleJob(job *Job, msgchan chan string, popchan chan string) {
+	fmt.Println("job will be handled")
 	tasks := jobToTasks(job)
-	for t := range tasks {
-		msgchan <- "need"
-		worker_address := <-popchan
+	fmt.Printf("%v\n", tasks)
+	for _, t := range tasks {
+		fmt.Printf("%v\n", t)
+		worker_address := ""
+		for {
+			msgchan <- "need"
+			worker_address = <-popchan
+			if worker_address == "" {
+				fmt.Println("no valid workers")
+				time.Sleep(time.Second)
+				continue
+			} else {
+				break
+			}
+		}
+		fmt.Printf("%v\n", worker_address)
 		out, err := net.Dial("tcp", worker_address)
 		encoder := gob.NewEncoder(out)
 		err = encoder.Encode(t)
@@ -148,6 +164,15 @@ func handleJob(job *Job, msgchan chan string, popchan chan string) {
 }
 
 func jobToTasks(job *Job) []Task {
-	tasks := make([]Task, 0)
+	fmt.Println("job to tasks")
+	nframes := len(job.Frames)
+	tasks := make([]Task, nframes)
+	for i := 0 ; i < nframes ; i++ {
+		tasks[i].Run = job.Run
+		tasks[i].Scene = job.Scene
+		tasks[i].Driver = job.Driver
+		tasks[i].Frame = job.Frames[i]
+	}
 	return tasks
 }
+
