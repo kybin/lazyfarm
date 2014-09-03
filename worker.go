@@ -11,10 +11,29 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"strconv"
 )
 
 var farmAddress string = ":8080"
-var myAddress string = ":8082"
+var myAddress string = findMyAddress()
+
+func findMyAddress() string {
+	port := 8082
+	for i :=0; i < 10; i++ {
+		address := ":"+strconv.Itoa(port)
+		ln, err := net.Listen("tcp", address)
+		if err != nil {
+			port++
+			continue
+		}
+		ln.Close()
+		fmt.Printf("my address is %v\n", address)
+		return address
+	}
+	fmt.Printf("cannot find good port")
+	os.Exit(1)
+	return ""
+}
 
 func main() {
 	login()
