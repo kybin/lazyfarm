@@ -13,11 +13,14 @@ import (
 func main() {
 	msgchan := make(chan string)
 	popchan := make(chan string)
-
 	go workerStack(msgchan, popchan)
 
+	groupmsgchan := make(chan GroupChanMsg)
+	go groupChanMap(groupmsgchan)
+	go createGroup("", groupmsgchan, msgchan, popchan) // default fallback group
+
 	go listenWorker(msgchan)
-	go listenJob(msgchan, popchan)
+	go listenJob(groupmsgchan)
 
 	for {
 		time.Sleep(time.Second)
@@ -116,7 +119,7 @@ func handleWorkerConn(conn net.Conn) (*Worker, string)  {
 }
 
 
-func listenJob(msgchan chan string, popchan chan string) {
+func listenJob(groupchan chan GroupChanMsg) {
 	ln, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatal(err)
@@ -130,36 +133,22 @@ func listenJob(msgchan chan string, popchan chan string) {
 		decoder := gob.NewDecoder(conn)
 		decoder.Decode(job)
 		fmt.Println("job decoded")
-		go handleJob(job, msgchan, popchan)
+		go handleJob(job, groupchan)
 	}
 }
 
-func handleJob(job *Job, msgchan chan string, popchan chan string) {
+func handleJob(job *Job, groupfindchan chan GroupChanMsg) {
 	fmt.Println("job will be handled")
+
+	reply := make(chan chan Task)
+	groupfindchan <- GroupChanMsg{Type:"find", GroupName:job.Group, Reply:reply}
+	jobgroupchan := <-reply
+
 	tasks := jobToTasks(job)
 	fmt.Printf("%v\n", tasks)
 	for _, t := range tasks {
 		fmt.Printf("%v\n", t)
-		worker_address := ""
-		for {
-			msgchan <- "need"
-			worker_address = <-popchan
-			if worker_address == "" {
-				fmt.Println("no valid workers")
-				time.Sleep(time.Second)
-				continue
-			} else {
-				break
-			}
-		}
-		fmt.Printf("%v\n", worker_address)
-		out, err := net.Dial("tcp", worker_address)
-		encoder := gob.NewEncoder(out)
-		err = encoder.Encode(t)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("redirect : %v\n", t)
+		jobgroupchan <- t
 	}
 }
 
@@ -176,3 +165,62 @@ func jobToTasks(job *Job) []Task {
 	return tasks
 }
 
+func createGroup(name string, groupmsgchan chan GroupChanMsg, workermsgchan chan string, workerpopchan chan string) {
+	grouptaskchan := make(chan Task)
+	go handleGroupTask(grouptaskchan, workermsgchan, workerpopchan)
+
+	groupmsgchan <- GroupChanMsg{Type:"add", GroupName:name, GroupChannel:grouptaskchan}
+}
+
+func handleGroupTask(grouptaskchan chan Task, workermsgchan chan string, workerpopchan chan string) {
+	for {
+		task := <-grouptaskchan
+		worker_address := findWorker(workermsgchan, workerpopchan)
+		sendTask(task, worker_address)
+	}
+}
+
+func sendTask(task Task, worker_address string) {
+	out, err := net.Dial("tcp", worker_address)
+	encoder := gob.NewEncoder(out)
+	err = encoder.Encode(task)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("redirect : %v\n", task)
+}
+
+func groupChanMap(msgchan chan GroupChanMsg) {
+	groupchanmap := make(map[string]chan Task)
+	for {
+		msg := <-msgchan
+		switch msg.Type {
+		case "add":
+			groupchanmap[msg.GroupName] = msg.GroupChannel
+		case "delete":
+			delete(groupchanmap, msg.GroupName)
+		case "find":
+			msg.Reply <- groupchanmap[msg.GroupName]
+		default:
+			log.Fatal(errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type)))
+		}
+		fmt.Println(groupchanmap)
+	}
+}
+
+func findWorker(workermsgchan chan string, workerpopchan chan string) string {
+	worker_address := ""
+	for {
+		workermsgchan <- "need"
+		worker_address = <-workerpopchan
+		if worker_address == "" {
+			fmt.Println("no valid workers")
+			time.Sleep(time.Second)
+			continue
+		} else {
+			break
+		}
+	}
+	fmt.Printf("%v\n", worker_address)
+	return worker_address
+}
