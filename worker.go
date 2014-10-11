@@ -15,9 +15,11 @@ import (
 	"flag"
 )
 
+var group string
+
+
 var farmAddress string = ":8080"
 var myAddress string = findMyAddress()
-
 func findMyAddress() string {
 	port := 8082
 	for i :=0; i < 10; i++ {
@@ -37,7 +39,6 @@ func findMyAddress() string {
 }
 
 func main() {
-	var group string
 	flag.StringVar(&group, "group", "", "worker will serve this group of job")
 	flag.Parse()
 	login()
@@ -54,7 +55,7 @@ func send(status string) {
 		log.Fatal(err)
 	}
 	enc := gob.NewEncoder(conn)
-	worker := &Worker{myAddress}
+	worker := &Worker{myAddress, group}
 	err = enc.Encode(worker)
 	if err != nil{
 		log.Fatal(err)
