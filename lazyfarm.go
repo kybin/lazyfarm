@@ -28,37 +28,28 @@ func main() {
 	}
 }
 
-func workerStack(msgchan chan string, popchan chan string) {
+func workerStack(msgchan chan WorkerStackMsg) {
 	stack := make([]string, 0)
-	var msg string
-	var msgs []string
-	var status string
-	var address string
 	for {
-		msg = <-msgchan
-		msgs = strings.Split(msg, " ")
-		status = msgs[0]
-		switch status {
+		msg := <-msgchan
+		switch msg.Type {
 		case "login": // push
-			address = msgs[1]
-			stack = append(stack, address)
+			stack = append(stack, msg.WorkerAddress)
 		case "logout": // find index and delete
-			address = msgs[1]
 			idx := -1
 			for i, v := range stack {
-				if (v == address) {
+				if (v == msg.WorkerAddress) {
 					idx = i
 					break
 				}
 			}
 			if idx == -1 {
-				notfound := errors.New("not found " + address)
+				notfound := errors.New("not found " + msg.WorkerAddress)
 				log.Fatal(notfound)
 			}
 			stack = append(stack[:idx], stack[idx+1:]...) // delete address from stack
 		case "waiting", "done": // same with login yet.
-			address = msgs[1]
-			stack = append(stack, address)
+			stack = append(stack, msg.WorkerAddress)
 		case "need": // pop
 			if len(stack) == 0 {
 				address = ""
@@ -67,7 +58,7 @@ func workerStack(msgchan chan string, popchan chan string) {
 				address = stack[last]
 				stack = stack[:last]
 			}
-			popchan <- address
+			msg.Reply <- address
 		default:
 			notexpect := errors.New(fmt.Sprintf("not expected status '%v'", status))
 			log.Fatal(notexpect)

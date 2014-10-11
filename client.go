@@ -18,10 +18,12 @@ func main() {
 	var scene string
 	var driver string
 	var framestr string
+	var group string
 	flag.StringVar(&run, "run", "", "a program you want render.")
 	flag.StringVar(&scene, "scene", "", "scene for render")
 	flag.StringVar(&driver, "driver", "", "which node (if exists) for render")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
+	flag.StringVar(&group, "group", "", "worker in the group will serve this job")
 	flag.Parse()
 	// expand scene file path
 	if scene != "" {
@@ -41,6 +43,7 @@ func main() {
 		Scene : scene,
 		Driver : driver,
 		Frames : frames,
+		Group : group,
 	}
 	fmt.Println(r)
 	conn, err := net.Dial("tcp", ":8081")

@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 	"strconv"
+	"flag"
 )
 
 var farmAddress string = ":8080"
@@ -36,6 +37,9 @@ func findMyAddress() string {
 }
 
 func main() {
+	var group string
+	flag.StringVar(&group, "group", "", "worker will serve this group of job")
+	flag.Parse()
 	login()
 	go logoutAtExit()
 	go listenJob()
