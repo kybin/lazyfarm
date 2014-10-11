@@ -22,3 +22,16 @@ func (slice intSlice) pos(value int) int {
     }
     return -1
 }
+
+func jobToTasks(job *Job) []Task {
+	fmt.Println("job to tasks")
+	nframes := len(job.Frames)
+	tasks := make([]Task, nframes)
+	for i := 0 ; i < nframes ; i++ {
+		tasks[i].Run = job.Run
+		tasks[i].Scene = job.Scene
+		tasks[i].Driver = job.Driver
+		tasks[i].Frame = job.Frames[i]
+	}
+	return tasks
+}

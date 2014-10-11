@@ -144,19 +144,6 @@ func handleJob(job *Job, groupinfochan chan GroupInfoMsg) {
 	}
 }
 
-func jobToTasks(job *Job) []Task {
-	fmt.Println("job to tasks")
-	nframes := len(job.Frames)
-	tasks := make([]Task, nframes)
-	for i := 0 ; i < nframes ; i++ {
-		tasks[i].Run = job.Run
-		tasks[i].Scene = job.Scene
-		tasks[i].Driver = job.Driver
-		tasks[i].Frame = job.Frames[i]
-	}
-	return tasks
-}
-
 func createGroup(name string, groupinfochan chan GroupInfoMsg) {
 	workerchan := make(chan WorkerStackMsg)
 	go workerStack(workerchan)
