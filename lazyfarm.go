@@ -15,19 +15,19 @@ func main() {
 	groupinfochan := make(chan GroupInfoMsg)
 	go groupInfoMap(groupinfochan)
 	go createGroup("", groupinfochan) // default fallback group
-	go createGroup("fx", groupinfochan) // default fallback group
-	go createGroup("render", groupinfochan) // default fallback group
+	go createGroup("fx", groupinfochan) // test group
+	go createGroup("render", groupinfochan) // test group
 
 	go listenWorker(groupinfochan)
 	go listenJob(groupinfochan)
 
 	for {
 		time.Sleep(time.Second)
-		fmt.Println("tired...")
+		// fmt.Println("tired...")
 	}
 }
 
-func workerStack(msgchan chan WorkerStackMsg) {
+func workerStack(groupname string, msgchan chan WorkerStackMsg) {
 	stack := make([]string, 0)
 	for {
 		msg := <-msgchan
@@ -61,118 +61,99 @@ func workerStack(msgchan chan WorkerStackMsg) {
 			notexpect := errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type))
 			log.Fatal(notexpect)
 		}
-		fmt.Printf("%v\n", stack)
+		fmt.Printf("group %v's workers - %v\n", groupname, stack)
 	}
 }
 
 
 func listenWorker(groupinfochan chan GroupInfoMsg) {
+	// worker socket
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	for {
+		// data in from worker socket
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("connected")
-		worker, status := handleWorkerConn(conn)
 
-		reply := make(chan Group)
-		groupinfochan <- GroupInfoMsg{Type:"find", GroupName:worker.Group, Reply:reply}
-		group := <-reply
-
-		switch status {
-		case "login", "logout", "done":
-			fmt.Printf("%v, %v\n", worker, status)
-			workerinfo := WorkerStackMsg{Type:status, WorkerAddress:worker.Address}
-			group.WorkerChannel <- workerinfo
-		default:
-			log.Fatal("unknown status")
+		// decode worker's status and infomation
+		decoder := gob.NewDecoder(conn)
+		worker := Worker{}
+		err = decoder.Decode(&worker)
+		if err != nil {
+			log.Fatal(err)
 		}
+		var status string
+		err = decoder.Decode(&status)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("worker %v - %v\n", status, worker)
+
+		handleWorker(status, worker, groupinfochan)
 	}
 }
 
-func handleWorkerConn(conn net.Conn) (Worker, string)  {
-	decoder := gob.NewDecoder(conn)
-	w := Worker{}
-	err := decoder.Decode(&w)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("worker decoded")
-	var status string
-	err = decoder.Decode(&status)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return w, status
-}
+func handleWorker(status string, worker Worker, groupinfochan chan GroupInfoMsg) {
+	// find worker group
+	reply := make(chan Group)
+	groupinfochan <- GroupInfoMsg{Type:"find", GroupName:worker.Group, Reply:reply}
+	group := <-reply
 
+	// send worker status to the group's workerstack
+	switch status {
+	case "login", "logout", "done":
+		workerinfo := WorkerStackMsg{Type:status, WorkerAddress:worker.Address}
+		group.WorkerChannel <- workerinfo
+	default:
+		log.Fatal("unknown status")
+	}
+}
 
 func listenJob(groupinfochan chan GroupInfoMsg) {
+	// job socket
 	ln, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	for {
+		// data in from job socket
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		// job decoding
 		job := &Job{}
 		decoder := gob.NewDecoder(conn)
 		decoder.Decode(job)
-		fmt.Println("job decoded")
+		fmt.Printf("job added - %v\n", job)
+
 		go handleJob(job, groupinfochan)
 	}
 }
 
 func handleJob(job *Job, groupinfochan chan GroupInfoMsg) {
-	fmt.Println("job will be handled")
-
+	// find job's group
 	reply := make(chan Group)
 	groupinfochan <- GroupInfoMsg{Type:"find", GroupName:job.Group, Reply:reply}
 	group := <-reply
 
+	// separate it to tasks
 	tasks := jobToTasks(job)
-	fmt.Printf("%v\n", tasks)
+
 	for _, t := range tasks {
 		fmt.Printf("%v\n", t)
+		// the task will served by worker
 		group.TaskChannel <- t
 	}
 }
 
-func createGroup(name string, groupinfochan chan GroupInfoMsg) {
-	workerchan := make(chan WorkerStackMsg)
-	go workerStack(workerchan)
-
-	taskchan := make(chan Task)
-	go handleGroupTask(taskchan, workerchan)
-
-	group := Group{TaskChannel:taskchan, WorkerChannel:workerchan}
-
-	groupinfochan <- GroupInfoMsg{Type:"add", GroupName:name, Group:group}
-}
-
-func handleGroupTask(taskchan chan Task, workerstackchan chan WorkerStackMsg) {
-	for {
-		task := <-taskchan
-		worker_address := findWorker(workerstackchan)
-		sendTask(task, worker_address)
-	}
-}
-
-func sendTask(task Task, worker_address string) {
-	out, err := net.Dial("tcp", worker_address)
-	encoder := gob.NewEncoder(out)
-	err = encoder.Encode(task)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("redirect : %v\n", task)
-}
 
 func groupInfoMap(msgchan chan GroupInfoMsg) {
 	groupchanmap := make(map[string]Group)
@@ -188,25 +169,55 @@ func groupInfoMap(msgchan chan GroupInfoMsg) {
 		default:
 			log.Fatal(errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type)))
 		}
-		fmt.Println(groupchanmap)
 	}
 }
 
+func createGroup(name string, groupinfochan chan GroupInfoMsg) {
+	// create group's worker channel and task channel
+	workerchan := make(chan WorkerStackMsg)
+	go workerStack(name, workerchan)
+	taskchan := make(chan Task)
+	go handleGroupTask(taskchan, workerchan)
+	// save it to group info map
+	group := Group{TaskChannel:taskchan, WorkerChannel:workerchan}
+	groupinfochan <- GroupInfoMsg{Type:"add", GroupName:name, Group:group}
+	fmt.Printf("group '%v' created\n", name)
+}
+
+func handleGroupTask(taskchan chan Task, workerstackchan chan WorkerStackMsg) {
+	for {
+		task := <-taskchan
+		worker_address := findWorker(workerstackchan)
+		sendTask(task, worker_address)
+	}
+}
+
+// find waiting worker from group's workerstack channel
 func findWorker(workerstackchan chan WorkerStackMsg) string {
-	worker_address := ""
+	var worker_address string
 	for {
 		reply := make(chan string)
 		msg := WorkerStackMsg{Type:"need", Reply:reply}
 		workerstackchan <- msg
 		worker_address = <-reply
+
 		if worker_address == "" {
-			fmt.Println("no valid workers")
+			fmt.Println("no waiting workers")
 			time.Sleep(time.Second)
 			continue
 		} else {
 			break
 		}
 	}
-	fmt.Printf("%v\n", worker_address)
 	return worker_address
+}
+
+func sendTask(task Task, worker_address string) {
+	out, err := net.Dial("tcp", worker_address)
+	encoder := gob.NewEncoder(out)
+	err = encoder.Encode(task)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("send task to %v : %v\n", worker_address, task)
 }

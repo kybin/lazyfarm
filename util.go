@@ -1,5 +1,9 @@
 package main
 
+import (
+	"fmt"
+)
+
 func removeDuplicates(a []int) []int {
         result := []int{}
         seen := map[int]int{}
