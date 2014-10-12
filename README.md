@@ -1,6 +1,11 @@
 A very lazy renderfarm!
 
 # usage
-./lazyfarm
-./worker
-./client -run="houdini" -scene="~/Desktop/render_test.hipnc" -driver="/out/mantra1" -frames="1-24"
+
+open 3 shell in lazyfarm dir. then...
+
+`./run_lazyfarm`
+
+`./run_worker`
+
+`./run_client`

@@ -1,0 +1,13 @@
+*.exr
+*.tif
+*.tga
+*.jpg
+*.iff
+*.pic
+
+scene/*/backup/*
+scene/*/render/*
+
+lazyfarm
+client
+worker

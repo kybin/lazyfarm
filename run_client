@@ -1,0 +1,1 @@
+./client -run="houdini" -scene="./scene/houdini/test.hipnc" -driver="/out/mantra1" -frames="1-24" -group="fx"
