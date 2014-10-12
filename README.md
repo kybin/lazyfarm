@@ -1,8 +1,11 @@
 A very lazy renderfarm!
 
-# usage
+### testing
+from lazyfarm directory,
 
-open 3 shell in lazyfarm dir. then...
+`./build` will make excutables.
+
+then
 
 `./run_lazyfarm`
 
