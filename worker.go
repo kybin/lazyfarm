@@ -105,6 +105,7 @@ func listenJob() {
 		var stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
+		fmt.Printf("work start. (%v)\n", r)
 		err = cmd.Run()
 		if err != nil {
 			log.Fatal(stderr.String())
