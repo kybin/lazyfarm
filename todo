@@ -1,4 +1,3 @@
-worker stack will have only three methods. push pop and delete.
 worker exit when lazyfarm interrupted
 compact and well designed status print
 lazyfarm_info.xml

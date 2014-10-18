@@ -31,25 +31,11 @@ func workerStack(groupname string, msgchan chan WorkerStackMsg) {
 	stack := make([]string, 0)
 	for {
 		msg := <-msgchan
+
 		switch msg.Type {
-		case "login": // push
+		case "push":
 			stack = append(stack, msg.WorkerAddress)
-		case "logout": // find index and delete
-			idx := -1
-			for i, v := range stack {
-				if (v == msg.WorkerAddress) {
-					idx = i
-					break
-				}
-			}
-			if idx == -1 {
-				notfound := errors.New("not found " + msg.WorkerAddress)
-				log.Fatal(notfound)
-			}
-			stack = append(stack[:idx], stack[idx+1:]...) // delete address from stack
-		case "waiting", "done": // same with login yet.
-			stack = append(stack, msg.WorkerAddress)
-		case "need": // pop
+		case "pop":
 			address := ""
 			if len(stack) != 0 {
 				last := len(stack)-1
@@ -57,9 +43,20 @@ func workerStack(groupname string, msgchan chan WorkerStackMsg) {
 				stack = stack[:last]
 			}
 			msg.Reply <- address
+		case "delete":
+			di := -1
+			for i, v := range stack {
+				if (v == msg.WorkerAddress) {
+					di = i
+					break
+				}
+			}
+			if di == -1 {
+				log.Fatal(errors.New("worker not found " + msg.WorkerAddress))
+			}
+			stack = append(stack[:di], stack[di+1:]...)
 		default:
-			notexpect := errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type))
-			log.Fatal(notexpect)
+			log.Fatal(errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type)))
 		}
 		fmt.Printf("group %v's workers - %v\n", groupname, stack)
 	}
@@ -105,13 +102,20 @@ func handleWorker(status string, worker Worker, groupinfochan chan GroupInfoMsg)
 	group := <-reply
 
 	// send worker status to the group's workerstack
+	var msgtype string
+
 	switch status {
-	case "login", "logout", "done":
-		workerinfo := WorkerStackMsg{Type:status, WorkerAddress:worker.Address}
-		group.WorkerChannel <- workerinfo
+	case "login":
+		msgtype = "push"
+	case "logout":
+		msgtype = "delete"
+	case "done":
+		msgtype = "push"
 	default:
 		log.Fatal("unknown status")
 	}
+
+	group.WorkerChannel <- WorkerStackMsg{Type:msgtype, WorkerAddress:worker.Address}
 }
 
 func listenJob(groupinfochan chan GroupInfoMsg) {
@@ -197,7 +201,7 @@ func findWorker(workerstackchan chan WorkerStackMsg) string {
 	var worker_address string
 	for {
 		reply := make(chan string)
-		msg := WorkerStackMsg{Type:"need", Reply:reply}
+		msg := WorkerStackMsg{Type:"pop", Reply:reply}
 		workerstackchan <- msg
 		worker_address = <-reply
 
