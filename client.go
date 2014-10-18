@@ -9,39 +9,32 @@ import (
 	"strconv"
 	"errors"
 	"sort"
-	"os/user"
 	"encoding/gob"
 )
 
 func main() {
-	var run string
-	var scene string
-	var driver string
+	var cmd string
 	var framestr string
 	var group string
-	flag.StringVar(&run, "run", "", "a program you want render.")
-	flag.StringVar(&scene, "scene", "", "scene for render")
-	flag.StringVar(&driver, "driver", "", "which node (if exists) for render")
+	flag.StringVar(&cmd, "cmd", "", "render command")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
 	flag.StringVar(&group, "group", "", "worker in the group will serve this job")
 	flag.Parse()
 	// expand scene file path
-	if scene != "" {
-		usr, _ := user.Current()
-		home := usr.HomeDir
-		if scene[:2] == "~/" {
-			scene = strings.Replace(scene, "~", home, 1)
-		}
-	}
+	//if scene != "" {
+	//	usr, _ := user.Current()
+	//	home := usr.HomeDir
+	//	if scene[:2] == "~/" {
+	//		scene = strings.Replace(scene, "~", home, 1)
+	//	}
+	//}
 	frames, err := parseFrames(framestr)
 	fmt.Println(frames)
 	if err != nil {
 		log.Fatal(err)
 	}
 	r := &Job {
-		Run : run,
-		Scene : scene,
-		Driver : driver,
+		Cmd : cmd,
 		Frames : frames,
 		Group : group,
 	}
@@ -63,7 +56,7 @@ func main() {
 func parseFrames(framestr string) ([]int, error) {
 	frames := make([]int, 0)
 	if framestr == "" {
-		err := errors.New(fmt.Sprintf("Cannot parse frames flag : %v", framestr))
+		err := errors.New("Cannot parse empty frame")
 		return nil, err
 	}
 	splited := strings.Split(framestr, ",")

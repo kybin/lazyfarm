@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"strconv"
 	"flag"
+	"strings"
 )
 
 var group string
@@ -116,12 +117,10 @@ func listenJob() {
 	}
 }
 
-func renderCommand(r *Task) *exec.Cmd {
-	rDict := map[string]string{
-		"houdini" : "hython",
-	}
-	runnable := rDict[r.Run]
-	args := []string{r.Scene, "-c", fmt.Sprintf("hou.node('%s').render(frame_range=(%v,%v,1))", r.Driver, r.Frame, r.Frame)}
+func renderCommand(t *Task) *exec.Cmd {
+	c := strings.Split(t.Cmd, " ")
+	runnable := c[0]
+	args := c[1:]
 	return exec.Command(runnable, args...)
 }
 

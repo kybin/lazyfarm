@@ -1,12 +1,12 @@
 package main
 
 type Task struct {
-	Run, Scene, Driver string
+	Cmd string
 	Frame int
 }
 
 type Job struct {
-	Run, Scene, Driver string
+	Cmd string
 	Frames []int
 	Group string
 }
