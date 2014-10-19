@@ -4,19 +4,19 @@ import (
 	"time"
 )
 
-type WWWJobInfo struct {
-	priority int // bigger number gets higher priority
-	name string
-	id string
-	user string
+type JobInfo struct {
+	Priority int // bigger number gets higher priority
+	Name string
+	Id string
+	User string
 }
 
-type WWWJobTime struct {
-	submit, start, end time.Time
+type JobTime struct {
+	Submit, Start, End time.Time
 }
 
-type WWWJobStatus struct {
-	waiting, active, done, err string
+type JobStatus struct {
+	Waiting, Active, Done, Err string
 }
 
 
