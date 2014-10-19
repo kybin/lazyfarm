@@ -5,7 +5,7 @@ import (
 	"log"
 	"fmt"
 	"encoding/gob"
-	"bytes"
+	// "bytes"
 	"os/exec"
 	"time"
 	"os"
@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"flag"
 	"strings"
+	"bufio"
 )
 
 
@@ -27,6 +28,9 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	// make a log dir
+	os.Mkdir("log", 0755)
 
 	var myaddr string = findMyAddress()
 	go listenJob(myaddr, server, group)
@@ -84,16 +88,37 @@ func listenJob(myaddr, server, group string) {
 		r := &Task{}
 		dec.Decode(r)
 		cmd := renderCommand(r)
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		fmt.Printf("work start. (%v)\n", r)
-		err = cmd.Run()
+		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			log.Fatal(stderr.String())
+			log.Fatal(err)
 		}
-		fmt.Println(stdout.String())
+		fmt.Printf("work start. (%v)\n", r)
+		err = cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		f, err := os.OpenFile("log/testlog.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600) 
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+			_, err = f.WriteString(scanner.Text()+"\n")
+			if err != nil {
+				panic(err)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading standard input:", err)
+		}
+		if err := cmd.Wait(); err != nil {
+			log.Fatal(err)
+		}
+		// fmt.Println(stdout.String())
 		send(server, myaddr, "done", group)
 		fmt.Println("work done.")
 	}
