@@ -7,5 +7,5 @@
 
 //job status
 //1st priority, title, %, status
-//2nd submit time, start time, done time
+//2nd submit time, start time, end time
 //3th id, user, waiting, active, error, done
