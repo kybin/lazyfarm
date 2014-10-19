@@ -78,7 +78,7 @@ func listenJob(myaddr, server, group string) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			// handle error
+			log.Fatal(err)
 		}
 		dec := gob.NewDecoder(conn)
 		r := &Task{}
