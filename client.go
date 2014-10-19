@@ -10,16 +10,24 @@ import (
 	"errors"
 	"sort"
 	"encoding/gob"
+	"os"
 )
 
 func main() {
 	var cmd string
 	var framestr string
+	var server string
 	var group string
 	flag.StringVar(&cmd, "cmd", "", "render command")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
+	flag.StringVar(&server, "server", "", "server address")
 	flag.StringVar(&group, "group", "", "worker in the group will serve this job")
 	flag.Parse()
+	if server == "" {
+		fmt.Println("please specify server address")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 	// expand scene file path
 	//if scene != "" {
 	//	usr, _ := user.Current()
@@ -39,7 +47,7 @@ func main() {
 		Group : group,
 	}
 	fmt.Println(r)
-	conn, err := net.Dial("tcp", ":8081")
+	conn, err := net.Dial("tcp", server)
 	if err != nil {
 		log.Fatal(err)
 	}

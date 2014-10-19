@@ -11,52 +11,43 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"strconv"
 	"flag"
 	"strings"
 )
 
-var group string
-
-
-var farmAddress string = ":8080"
-var myAddress string = findMyAddress()
-func findMyAddress() string {
-	port := 8082
-	for i :=0; i < 10; i++ {
-		address := ":"+strconv.Itoa(port)
-		ln, err := net.Listen("tcp", address)
-		if err != nil {
-			port++
-			continue
-		}
-		ln.Close()
-		fmt.Printf("my address is %v\n", address)
-		return address
-	}
-	fmt.Printf("cannot find good port")
-	os.Exit(1)
-	return ""
-}
 
 func main() {
+	var group string
+	var server string
+	flag.StringVar(&server, "server", "", "server address")
 	flag.StringVar(&group, "group", "", "worker will serve this group of job")
 	flag.Parse()
-	login()
-	go logoutAtExit()
-	go listenJob()
+	if server == "" {
+		fmt.Println("please specify server address")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	var myaddr string = findMyAddress()
+	go listenJob(myaddr, server, group)
+
+	send(server, myaddr, "login", group)
+	defer send(server, myaddr, "logout", group)
+
+	go logoutAtExit(server, myaddr, group)
+
 	for {
 		time.Sleep(10*time.Second)
 	}
 }
 
-func send(status string) {
-	conn, err := net.Dial("tcp", farmAddress)
+func send(server, myaddr, status, group string) {
+	conn, err := net.Dial("tcp", server)
 	if err != nil{
 		log.Fatal(err)
 	}
 	enc := gob.NewEncoder(conn)
-	worker := &Worker{myAddress, group}
+	worker := &Worker{myaddr, group}
 	err = enc.Encode(worker)
 	if err != nil{
 		log.Fatal(err)
@@ -67,29 +58,20 @@ func send(status string) {
 	}
 }
 
-
-func login() {
-	send("login")
-}
-
-func logout() {
-	send("logout")
-}
-
-func logoutAtExit() {
+func logoutAtExit(server, myaddr, group string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, syscall.SIGTERM)
 	go func() {
 		<-c
 		fmt.Println("interrupted...")
-		logout()
+		send(server, myaddr, "logout", group)
 		os.Exit(1)
 	}()
 }
 
-func listenJob() {
-	ln, err := net.Listen("tcp", myAddress)
+func listenJob(myaddr, server, group string) {
+	ln, err := net.Listen("tcp", myaddr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,7 +94,7 @@ func listenJob() {
 			log.Fatal(stderr.String())
 		}
 		fmt.Println(stdout.String())
-		send("done")
+		send(server, myaddr, "done", group)
 		fmt.Println("work done.")
 	}
 }

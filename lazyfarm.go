@@ -64,11 +64,17 @@ func workerStack(groupname string, msgchan chan WorkerStackMsg) {
 
 
 func listenWorker(groupinfochan chan GroupInfoMsg) {
-	// worker socket
-	ln, err := net.Listen("tcp", ":8080")
+	ip, err := localIP()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// worker socket
+	ln, err := net.Listen("tcp", ip.String()+":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("listening worker message from", ip.String()+":8080")
 
 	for {
 		// data in from worker socket
@@ -119,11 +125,17 @@ func handleWorker(status string, worker Worker, groupinfochan chan GroupInfoMsg)
 }
 
 func listenJob(groupinfochan chan GroupInfoMsg) {
-	// job socket
-	ln, err := net.Listen("tcp", ":8081")
+	ip, err := localIP()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// job socket
+	ln, err := net.Listen("tcp", ip.String()+":8081")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("listening job message from", ip.String()+":8081")
 
 	for {
 		// data in from job socket
