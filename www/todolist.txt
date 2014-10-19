@@ -5,9 +5,6 @@
 2. angular js
 3. polymer-project.org
 
-./worker 실행파일 위치에 log 폴더를 만들고 fileserver를 돌려버린다.
-log는 이걸로 처리한다. 
-
 http.Handle(
     "/assets/",
     http.StripPrefix(
@@ -15,6 +12,3 @@ http.Handle(
         http.FileServer(http.Dir("assets")),
     ),
 )
-
-log처리할때 사용하것(stderr, stdout both)
-ls -al &> ./log/test.log
