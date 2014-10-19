@@ -12,5 +12,5 @@ http.Handle(
     ),
 )
 
-
-
+log처리할때 사용하것(stderr, stdout both)
+ls -al &> ./log/test.log
