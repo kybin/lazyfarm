@@ -33,8 +33,8 @@ func main() {
 	var myaddr string = findMyAddress()
 	go listenJob(myaddr, server)
 
-	send(server, myaddr, "login")
-	defer send(server, myaddr, "logout")
+	send(server, myaddr, Login)
+	defer send(server, myaddr, Logout)
 
 	go logoutAtExit(server, myaddr)
 
@@ -43,18 +43,20 @@ func main() {
 	}
 }
 
-func send(server, myaddr, status string) {
+func send(server, myaddr string, status WorkerStatus) {
 	conn, err := net.Dial("tcp", server)
 	if err != nil{
 		log.Fatal(err)
 	}
+
+	worker := &Worker{Address:myaddr, Status:status}
+
 	enc := gob.NewEncoder(conn)
-	worker := &Worker{myaddr}
-	err = enc.Encode(worker)
+	err = enc.Encode("worker")
 	if err != nil{
 		log.Fatal(err)
 	}
-	err = enc.Encode(status)
+	err = enc.Encode(worker)
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -67,7 +69,7 @@ func logoutAtExit(server, myaddr string) {
 	go func() {
 		<-c
 		fmt.Println("interrupted...")
-		send(server, myaddr, "logout")
+		send(server, myaddr, Logout)
 		os.Exit(1)
 	}()
 }
@@ -117,7 +119,7 @@ func listenJob(myaddr, server string) {
 			log.Fatal(err)
 		}
 		// fmt.Println(stdout.String())
-		send(server, myaddr, "done")
+		send(server, myaddr, Finish)
 		fmt.Println("work done.")
 	}
 }

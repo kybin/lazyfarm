@@ -14,7 +14,7 @@ var workerStackChan = make(chan WorkerStackMsg)
 
 func main() {
 	go workerStack()
-	go listenWorker()
+	// go listenWorker()
 	go listenJob()
 
 	for {
@@ -58,54 +58,15 @@ func workerStack() {
 	}
 }
 
-
-func listenWorker() {
-	ip, err := localIP()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// worker socket
-	ln, err := net.Listen("tcp", ip.String()+":8080")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("listening worker message from", ip.String()+":8080")
-
-	for {
-		// data in from worker socket
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// decode worker's status and infomation
-		decoder := gob.NewDecoder(conn)
-		worker := Worker{}
-		err = decoder.Decode(&worker)
-		if err != nil {
-			log.Fatal(err)
-		}
-		var status string
-		err = decoder.Decode(&status)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("worker %v - %v\n", status, worker)
-
-		handleWorker(status, worker)
-	}
-}
-
-func handleWorker(status string, worker Worker) {
+func handleWorker(worker *Worker) {
 	var msgtype string
 
-	switch status {
-	case "login":
+	switch worker.Status {
+	case Login:
 		msgtype = "push"
-	case "logout":
+	case Logout:
 		msgtype = "delete"
-	case "done":
+	case Finish:
 		msgtype = "push"
 	default:
 		log.Fatal("unknown status")
@@ -133,18 +94,43 @@ func listenJob() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("data in")
 
-		// job decoding
-		job := &Job{}
 		decoder := gob.NewDecoder(conn)
-		decoder.Decode(job)
-		fmt.Printf("job added - %v\n", job)
+		var msgtype string
+		err = decoder.Decode(&msgtype)
+		if err != nil {
+			log.Fatal(err)
+		}
+		switch msgtype {
+		case "job":
+			fmt.Println("data is a Job")
 
-		go handleJob(job)
+			var j Job
+			err = decoder.Decode(&j)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			go handleJob(&j)
+		case "worker":
+			fmt.Println("data is a Worker")
+
+			var w Worker
+			err = decoder.Decode(&w)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			go handleWorker(&w)
+		default:
+			log.Fatal(errors.New("Cannot determine data type"))
+		}
 	}
 }
 
 func handleJob(job *Job) {
+	fmt.Printf("job added - %v\n", job)
 	// separate it to tasks
 	tasks, err := jobToTasks(job)
 	if err != nil {

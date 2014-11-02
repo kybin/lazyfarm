@@ -61,6 +61,10 @@ func main() {
 		log.Fatal(err)
 	}
 	encoder := gob.NewEncoder(conn)
+	err = encoder.Encode("job")
+	if err != nil {
+		log.Fatal(err)
+	}
 	err = encoder.Encode(r)
 	if err != nil {
 		log.Fatal(err)

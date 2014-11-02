@@ -56,8 +56,17 @@ func (j *Job) NFail() int {
 	return n
 }
 
+type WorkerStatus int
+
+const (
+	Login = iota
+	Logout
+	Finish
+)
+
 type Worker struct {
 	Address string
+	Status WorkerStatus
 }
 
 type WorkerStackMsg struct {
@@ -65,6 +74,7 @@ type WorkerStackMsg struct {
 	WorkerAddress string
 	Reply chan string
 }
+
 
 // type Worker struct {
 // 	Name string
