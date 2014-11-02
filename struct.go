@@ -25,7 +25,6 @@ type FrameInfo struct {
 type Job struct {
 	Cmd string
 	Frames map[int]FrameInfo
-	Group string
 	Submited time.Time
 	Started time.Time
 	Ended time.Time
@@ -59,25 +58,12 @@ func (j *Job) NFail() int {
 
 type Worker struct {
 	Address string
-	Group string
 }
 
 type WorkerStackMsg struct {
 	Type string
 	WorkerAddress string
 	Reply chan string
-}
-
-type Group struct {
-	TaskChannel chan Task
-	WorkerChannel chan WorkerStackMsg
-}
-
-type GroupInfoMsg struct {
-	Type string
-	GroupName string
-	Group Group
-	Reply chan Group
 }
 
 // type Worker struct {

@@ -10,16 +10,12 @@ import (
 	"errors"
 )
 
+var workerStackChan = make(chan WorkerStackMsg)
+
 func main() {
-
-	groupinfochan := make(chan GroupInfoMsg)
-	go groupInfoMap(groupinfochan)
-	go createGroup("", groupinfochan) // default fallback group
-	go createGroup("fx", groupinfochan) // test group
-	go createGroup("render", groupinfochan) // test group
-
-	go listenWorker(groupinfochan)
-	go listenJob(groupinfochan)
+	go workerStack()
+	go listenWorker()
+	go listenJob()
 
 	for {
 		time.Sleep(time.Second)
@@ -27,10 +23,10 @@ func main() {
 	}
 }
 
-func workerStack(groupname string, msgchan chan WorkerStackMsg) {
+func workerStack() {
 	stack := make([]string, 0)
 	for {
-		msg := <-msgchan
+		msg := <-workerStackChan
 
 		switch msg.Type {
 		case "push":
@@ -58,12 +54,12 @@ func workerStack(groupname string, msgchan chan WorkerStackMsg) {
 		default:
 			log.Fatal(errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type)))
 		}
-		fmt.Printf("group %v's workers - %v\n", groupname, stack)
+		fmt.Printf("worker list - %v\n", stack)
 	}
 }
 
 
-func listenWorker(groupinfochan chan GroupInfoMsg) {
+func listenWorker() {
 	ip, err := localIP()
 	if err != nil {
 		log.Fatal(err)
@@ -97,17 +93,11 @@ func listenWorker(groupinfochan chan GroupInfoMsg) {
 		}
 		fmt.Printf("worker %v - %v\n", status, worker)
 
-		handleWorker(status, worker, groupinfochan)
+		handleWorker(status, worker)
 	}
 }
 
-func handleWorker(status string, worker Worker, groupinfochan chan GroupInfoMsg) {
-	// find worker group
-	reply := make(chan Group)
-	groupinfochan <- GroupInfoMsg{Type:"find", GroupName:worker.Group, Reply:reply}
-	group := <-reply
-
-	// send worker status to the group's workerstack
+func handleWorker(status string, worker Worker) {
 	var msgtype string
 
 	switch status {
@@ -121,10 +111,10 @@ func handleWorker(status string, worker Worker, groupinfochan chan GroupInfoMsg)
 		log.Fatal("unknown status")
 	}
 
-	group.WorkerChannel <- WorkerStackMsg{Type:msgtype, WorkerAddress:worker.Address}
+	workerStackChan <- WorkerStackMsg{Type:msgtype, WorkerAddress:worker.Address}
 }
 
-func listenJob(groupinfochan chan GroupInfoMsg) {
+func listenJob() {
 	ip, err := localIP()
 	if err != nil {
 		log.Fatal(err)
@@ -150,16 +140,11 @@ func listenJob(groupinfochan chan GroupInfoMsg) {
 		decoder.Decode(job)
 		fmt.Printf("job added - %v\n", job)
 
-		go handleJob(job, groupinfochan)
+		go handleJob(job)
 	}
 }
 
-func handleJob(job *Job, groupinfochan chan GroupInfoMsg) {
-	// find job's group
-	reply := make(chan Group)
-	groupinfochan <- GroupInfoMsg{Type:"find", GroupName:job.Group, Reply:reply}
-	group := <-reply
-
+func handleJob(job *Job) {
 	// separate it to tasks
 	tasks, err := jobToTasks(job)
 	if err != nil {
@@ -168,56 +153,18 @@ func handleJob(job *Job, groupinfochan chan GroupInfoMsg) {
 
 	for _, t := range tasks {
 		fmt.Printf("%v\n", t)
-		// the task will served by worker
-		group.TaskChannel <- t
+		worker_address := findWorker()
+		sendTask(t, worker_address)
 	}
 }
 
-
-func groupInfoMap(msgchan chan GroupInfoMsg) {
-	groupchanmap := make(map[string]Group)
-	for {
-		msg := <-msgchan
-		switch msg.Type {
-		case "add":
-			groupchanmap[msg.GroupName] = msg.Group
-		case "delete":
-			delete(groupchanmap, msg.GroupName)
-		case "find":
-			msg.Reply <- groupchanmap[msg.GroupName]
-		default:
-			log.Fatal(errors.New(fmt.Sprintf("not expected message type '%v'", msg.Type)))
-		}
-	}
-}
-
-func createGroup(name string, groupinfochan chan GroupInfoMsg) {
-	// create group's worker channel and task channel
-	workerchan := make(chan WorkerStackMsg)
-	go workerStack(name, workerchan)
-	taskchan := make(chan Task)
-	go handleGroupTask(taskchan, workerchan)
-	// save it to group info map
-	group := Group{TaskChannel:taskchan, WorkerChannel:workerchan}
-	groupinfochan <- GroupInfoMsg{Type:"add", GroupName:name, Group:group}
-	fmt.Printf("group '%v' created\n", name)
-}
-
-func handleGroupTask(taskchan chan Task, workerstackchan chan WorkerStackMsg) {
-	for {
-		task := <-taskchan
-		worker_address := findWorker(workerstackchan)
-		sendTask(task, worker_address)
-	}
-}
-
-// find waiting worker from group's workerstack channel
-func findWorker(workerstackchan chan WorkerStackMsg) string {
+// find waiting worker from workerstack channel
+func findWorker() string {
 	var worker_address string
 	for {
 		reply := make(chan string)
 		msg := WorkerStackMsg{Type:"pop", Reply:reply}
-		workerstackchan <- msg
+		workerStackChan <- msg
 		worker_address = <-reply
 
 		if worker_address == "" {

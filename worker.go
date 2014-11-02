@@ -18,10 +18,8 @@ import (
 
 
 func main() {
-	var group string
 	var server string
 	flag.StringVar(&server, "server", "", "server address")
-	flag.StringVar(&group, "group", "", "worker will serve this group of job")
 	flag.Parse()
 	if server == "" {
 		fmt.Println("please specify server address")
@@ -33,25 +31,25 @@ func main() {
 	os.Mkdir("log", 0755)
 
 	var myaddr string = findMyAddress()
-	go listenJob(myaddr, server, group)
+	go listenJob(myaddr, server)
 
-	send(server, myaddr, "login", group)
-	defer send(server, myaddr, "logout", group)
+	send(server, myaddr, "login")
+	defer send(server, myaddr, "logout")
 
-	go logoutAtExit(server, myaddr, group)
+	go logoutAtExit(server, myaddr)
 
 	for {
 		time.Sleep(10*time.Second)
 	}
 }
 
-func send(server, myaddr, status, group string) {
+func send(server, myaddr, status string) {
 	conn, err := net.Dial("tcp", server)
 	if err != nil{
 		log.Fatal(err)
 	}
 	enc := gob.NewEncoder(conn)
-	worker := &Worker{myaddr, group}
+	worker := &Worker{myaddr}
 	err = enc.Encode(worker)
 	if err != nil{
 		log.Fatal(err)
@@ -62,19 +60,19 @@ func send(server, myaddr, status, group string) {
 	}
 }
 
-func logoutAtExit(server, myaddr, group string) {
+func logoutAtExit(server, myaddr string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, syscall.SIGTERM)
 	go func() {
 		<-c
 		fmt.Println("interrupted...")
-		send(server, myaddr, "logout", group)
+		send(server, myaddr, "logout")
 		os.Exit(1)
 	}()
 }
 
-func listenJob(myaddr, server, group string) {
+func listenJob(myaddr, server string) {
 	ln, err := net.Listen("tcp", myaddr)
 	if err != nil {
 		log.Fatal(err)
@@ -119,7 +117,7 @@ func listenJob(myaddr, server, group string) {
 			log.Fatal(err)
 		}
 		// fmt.Println(stdout.String())
-		send(server, myaddr, "done", group)
+		send(server, myaddr, "done")
 		fmt.Println("work done.")
 	}
 }

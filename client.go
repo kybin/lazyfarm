@@ -16,12 +16,11 @@ func main() {
 	var cmd string
 	var framestr string
 	var server string
-	var group string
 	flag.StringVar(&cmd, "cmd", "", "render command. If {frame} specifier in the command, it need frames flag")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
 	flag.StringVar(&server, "server", "", "server address")
-	flag.StringVar(&group, "group", "", "worker in the group will serve this job")
 	flag.Parse()
+	fmt.Println(server)
 	if server == "" {
 		fmt.Println("please specify server address")
 		flag.PrintDefaults()
@@ -47,14 +46,14 @@ func main() {
 	}
 
 	frames, err := parseFrames(framestr)
-	fmt.Println(frames)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(frames)
+
 	r := &Job {
 		Cmd : cmd,
 		Frames : frames,
-		Group : group,
 	}
 	fmt.Println(r)
 	conn, err := net.Dial("tcp", server)
@@ -73,9 +72,10 @@ func main() {
 // Any ambiguity in the flag leads error.
 func parseFrames(framestr string) (map[int]FrameInfo, error) {
 	frames := make(map[int]FrameInfo, 0)
+
 	if framestr == "" {
-		err := errors.New("Cannot parse empty frame")
-		return nil, err
+		frames[0] = FrameInfo{Status:Wait}
+		return frames, nil
 	}
 
 	splited := strings.Split(framestr, ",")
