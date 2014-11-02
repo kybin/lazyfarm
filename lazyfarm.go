@@ -14,8 +14,7 @@ var workerStackChan = make(chan WorkerStackMsg)
 
 func main() {
 	go workerStack()
-	// go listenWorker()
-	go listenJob()
+	go listen()
 
 	for {
 		time.Sleep(time.Second)
@@ -75,7 +74,7 @@ func handleWorker(worker *Worker) {
 	workerStackChan <- WorkerStackMsg{Type:msgtype, WorkerAddress:worker.Address}
 }
 
-func listenJob() {
+func listen() {
 	ip, err := localIP()
 	if err != nil {
 		log.Fatal(err)
