@@ -161,7 +161,10 @@ func handleJob(job *Job, groupinfochan chan GroupInfoMsg) {
 	group := <-reply
 
 	// separate it to tasks
-	tasks := jobToTasks(job)
+	tasks, err := jobToTasks(job)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for _, t := range tasks {
 		fmt.Printf("%v\n", t)

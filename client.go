@@ -8,7 +8,6 @@ import (
 	"strings"
 	"strconv"
 	"errors"
-	"sort"
 	"encoding/gob"
 	"os"
 )
@@ -61,16 +60,21 @@ func main() {
 
 // Here we parse frames flag. The result will list of frames. 
 // Any ambiguity in the flag leads error.
-func parseFrames(framestr string) ([]int, error) {
-	frames := make([]int, 0)
+func parseFrames(framestr string) (map[int]FrameInfo, error) {
+	frames := make(map[int]FrameInfo, 0)
 	if framestr == "" {
 		err := errors.New("Cannot parse empty frame")
 		return nil, err
 	}
+
 	splited := strings.Split(framestr, ",")
+
 	for _, f := range splited {
+
 		f = strings.TrimSpace(f)
+
 		if strings.Contains(f, "-") {
+			// frame range
 			fs := strings.Split(f, "-")
 			if len(fs) != 2 {
 				err := errors.New(fmt.Sprintf("Cannot parse frames flag : %v", framestr))
@@ -88,18 +92,20 @@ func parseFrames(framestr string) ([]int, error) {
 				err := errors.New(fmt.Sprintf("Cannot parse frames flag : %v", framestr))
 				return nil, err
 			}
+			// success parsing frame range
 			for i := fstart; i <= fend; i++ {
-				frames = append(frames, i)
+				frames[i] = FrameInfo{Status:Wait}
 			}
 		} else {
+			// single frame
 			i, err := strconv.Atoi(f)
 			if err != nil {
 				return nil, err
 			}
-			frames = append(frames, i)
+			// success parsing single frame
+			frames[i] = FrameInfo{Status:Wait}
 		}
 	}
-	sort.Sort(sort.IntSlice(frames))
 	//removeDuplicates(frames)
 	return frames, nil
 }

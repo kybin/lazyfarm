@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"os"
+	"strings"
 )
 
 func removeDuplicates(a []int) []int {
@@ -32,15 +33,27 @@ func (slice intSlice) pos(value int) int {
     return -1
 }
 
-func jobToTasks(job *Job) []Task {
+func jobToTasks(job *Job) ([]Task, error) {
 	fmt.Println("job to tasks")
-	nframes := len(job.Frames)
-	tasks := make([]Task, nframes)
-	for i := 0 ; i < nframes ; i++ {
-		tasks[i].Cmd = job.Cmd
-		tasks[i].Frame = job.Frames[i]
+
+	if strings.Contains(job.Cmd, "{frame}") && (job.NFrame() != 1) {
+		err := errors.New("job command does not have frame definition.")
+		return nil, err
 	}
-	return tasks
+
+	fmt.Println(job.NFrame())
+	tasks := make([]Task, job.NFrame())
+	if strings.Contains(job.Cmd, "{frame}") {
+		i := 0
+		for f, _ := range job.Frames {
+			fmt.Println(f)
+			tasks[i].Cmd = strings.Replace(job.Cmd, "{frame}", strconv.Itoa(f), -1)
+			i++
+		}
+	} else {
+		tasks[0].Cmd = job.Cmd
+	}
+	return tasks, nil
 }
 
 func localIP() (net.IP, error) {
