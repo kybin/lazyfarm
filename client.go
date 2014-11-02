@@ -17,7 +17,7 @@ func main() {
 	var framestr string
 	var server string
 	var group string
-	flag.StringVar(&cmd, "cmd", "", "render command")
+	flag.StringVar(&cmd, "cmd", "", "render command. If {frame} specifier in the command, it need frames flag")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
 	flag.StringVar(&server, "server", "", "server address")
 	flag.StringVar(&group, "group", "", "worker in the group will serve this job")
@@ -35,6 +35,17 @@ func main() {
 	//		scene = strings.Replace(scene, "~", home, 1)
 	//	}
 	//}
+
+	if !strings.Contains(cmd, "{frame}") && (framestr != "") {
+		fmt.Println("\nFound frames flag. But command does not have {frame} specifier.\n")
+		flag.PrintDefaults()
+		os.Exit(1)
+	} else if strings.Contains(cmd, "{frame}") && (framestr == "") {
+		fmt.Println("\n{frame} specifier set. But frames flag not found\n")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
 	frames, err := parseFrames(framestr)
 	fmt.Println(frames)
 	if err != nil {
