@@ -36,7 +36,7 @@ func (slice intSlice) pos(value int) int {
 func jobToTasks(job *Job) ([]Task, error) {
 	fmt.Println("job to tasks")
 
-	if strings.Contains(job.Cmd, "{frame}") && (job.NFrame() != 1) {
+	if !strings.Contains(job.Cmd, "{frame}") && (job.NFrame() != 1) {
 		err := errors.New("job command does not have frame definition.")
 		return nil, err
 	}
