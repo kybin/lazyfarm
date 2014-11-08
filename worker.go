@@ -16,12 +16,13 @@ import (
 	"bufio"
 )
 
+var SERVER string
+var MYADDRESS string = findMyAddress()
 
 func main() {
-	var server string
-	flag.StringVar(&server, "server", "", "server address")
+	flag.StringVar(&SERVER, "server", "", "server address")
 	flag.Parse()
-	if server == "" {
+	if SERVER == "" {
 		fmt.Println("please specify server address")
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -30,26 +31,25 @@ func main() {
 	// make a log dir
 	os.Mkdir("log", 0755)
 
-	var myaddr string = findMyAddress()
-	go listenJob(myaddr, server)
+	go listenJob()
 
-	send(server, myaddr, Login)
-	defer send(server, myaddr, Logout)
+	send(SERVER, Login)
+	defer send(SERVER, Logout)
 
-	go logoutAtExit(server, myaddr)
+	go logoutAtExit()
 
 	for {
 		time.Sleep(10*time.Second)
 	}
 }
 
-func send(server, myaddr string, status WorkerStatus) {
-	conn, err := net.Dial("tcp", server)
+func send(to string, status WorkerStatus) {
+	conn, err := net.Dial("tcp", to)
 	if err != nil{
 		log.Fatal(err)
 	}
 
-	worker := &Worker{Address:myaddr, Status:status}
+	worker := &Worker{Address:MYADDRESS, Status:status}
 
 	enc := gob.NewEncoder(conn)
 	err = enc.Encode("worker")
@@ -62,20 +62,20 @@ func send(server, myaddr string, status WorkerStatus) {
 	}
 }
 
-func logoutAtExit(server, myaddr string) {
+func logoutAtExit() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	signal.Notify(c, syscall.SIGTERM)
 	go func() {
 		<-c
 		fmt.Println("interrupted...")
-		send(server, myaddr, Logout)
+		send(SERVER, Logout)
 		os.Exit(1)
 	}()
 }
 
-func listenJob(myaddr, server string) {
-	ln, err := net.Listen("tcp", myaddr)
+func listenJob() {
+	ln, err := net.Listen("tcp", MYADDRESS)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func listenJob(myaddr, server string) {
 			log.Fatal(err)
 		}
 		// fmt.Println(stdout.String())
-		send(server, myaddr, Finish)
+		send(SERVER, Finish)
 		fmt.Println("work done.")
 	}
 }
