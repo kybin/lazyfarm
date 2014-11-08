@@ -119,7 +119,9 @@ func listenJob() {
 			log.Fatal(err)
 		}
 		// fmt.Println(stdout.String())
-		send(SERVER, Finish)
+		enc := gob.NewEncoder(conn)
+		enc.Encode(Finish)
+		// send(SERVER, Finish)
 		fmt.Println("work done.")
 	}
 }

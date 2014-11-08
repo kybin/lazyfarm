@@ -65,8 +65,6 @@ func handleWorker(worker *Worker) {
 		msgtype = "push"
 	case Logout:
 		msgtype = "delete"
-	case Finish:
-		msgtype = "push"
 	default:
 		log.Fatal("unknown status")
 	}
@@ -164,6 +162,7 @@ func findWorker() string {
 }
 
 func sendTask(task Task, worker_address string) {
+	// send task to worker
 	out, err := net.Dial("tcp", worker_address)
 	encoder := gob.NewEncoder(out)
 	err = encoder.Encode(task)
@@ -171,4 +170,21 @@ func sendTask(task Task, worker_address string) {
 		log.Fatal(err)
 	}
 	fmt.Printf("send task to %v : %v\n", worker_address, task)
+
+	// wait for result
+	var result WorkerStatus
+
+	decoder := gob.NewDecoder(out)
+	err = decoder.Decode(&result)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if result == Finish {
+		fmt.Println("task finished : ", worker_address)
+	} else {
+		fmt.Println("task failed for some reason : ", worker_address)
+	}
+
+	// let our worker back
+	workerStackChan <- WorkerStackMsg{Type:"push", WorkerAddress:worker_address}
 }

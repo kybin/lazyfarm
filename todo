@@ -1,4 +1,3 @@
-worker - send back task process result when task accepted
 worker exit when lazyfarm interrupted
 compact and well designed status print
 lazyfarm_info.xml
