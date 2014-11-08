@@ -1,1 +1,0 @@
-./client -cmd="hython ./scene/houdini/test.hipnc -c hou.node('/out/mantra1').render(frame_range=(1,1,1))" -frames="1" -server=192.168.0.4:8081
