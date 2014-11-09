@@ -16,6 +16,7 @@ const (
 	Wait Status = "wait"
 	Processing Status = "processing"
 	Done Status = "done"
+	Failed Status = "failed"
 )
 
 type FrameInfo struct {
