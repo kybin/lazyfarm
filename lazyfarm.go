@@ -172,14 +172,14 @@ func sendTask(task Task, worker_address string) {
 	fmt.Printf("send task to %v : %v\n", worker_address, task)
 
 	// wait for result
-	var result WorkerStatus
+	var result Status
 
 	decoder := gob.NewDecoder(out)
 	err = decoder.Decode(&result)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if result == Finish {
+	if result == Done {
 		fmt.Println("task finished : ", worker_address)
 	} else {
 		fmt.Println("task failed for some reason : ", worker_address)

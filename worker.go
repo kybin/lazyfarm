@@ -120,7 +120,7 @@ func listenJob() {
 		}
 		// fmt.Println(stdout.String())
 		enc := gob.NewEncoder(conn)
-		enc.Encode(Finish)
+		enc.Encode(Done)
 		// send(SERVER, Finish)
 		fmt.Println("work done.")
 	}

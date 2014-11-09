@@ -62,7 +62,6 @@ type WorkerStatus string
 const (
 	Login WorkerStatus = "login"
 	Logout WorkerStatus = "logout"
-	Finish WorkerStatus = "finish"
 )
 
 type Worker struct {
