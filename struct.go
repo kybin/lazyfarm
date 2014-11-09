@@ -2,6 +2,7 @@ package main
 
 import (
 	"time"
+	_ "fmt"
 )
 
 type Task struct {
@@ -9,12 +10,12 @@ type Task struct {
 	Frame int
 }
 
-type Status int
+type Status string
 
 const (
-	Wait Status = iota
-	Processing
-	Done
+	Wait Status = "wait"
+	Processing Status = "processing"
+	Done Status = "done"
 )
 
 type FrameInfo struct {
@@ -56,12 +57,12 @@ func (j *Job) NFail() int {
 	return n
 }
 
-type WorkerStatus int
+type WorkerStatus string
 
 const (
-	Login = iota
-	Logout
-	Finish
+	Login WorkerStatus = "login"
+	Logout WorkerStatus = "logout"
+	Finish WorkerStatus = "finish"
 )
 
 type Worker struct {
