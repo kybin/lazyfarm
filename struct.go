@@ -30,6 +30,7 @@ type Job struct {
 	Submited time.Time
 	Started time.Time
 	Ended time.Time
+	MaximumRetry int
 }
 
 func (j *Job) NFrame() int {

@@ -84,9 +84,14 @@ func listenJob() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		// prepare encoder and decoder
 		dec := gob.NewDecoder(conn)
+		enc := gob.NewEncoder(conn)
+
 		r := &Task{}
 		dec.Decode(r)
+
+		// run command
 		cmd := renderCommand(r)
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -95,7 +100,7 @@ func listenJob() {
 		fmt.Printf("work start. (%v)\n", r)
 		err = cmd.Start()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		f, err := os.OpenFile("log/testlog.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600) 
@@ -115,14 +120,17 @@ func listenJob() {
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintln(os.Stderr, "reading standard input:", err)
 		}
-		if err := cmd.Wait(); err != nil {
-			log.Fatal(err)
+
+		// check the task exit without error, or not.
+		err = cmd.Wait()
+		if err != nil {
+			log.Println(err)
+			enc.Encode(Failed)
+			fmt.Println("work failed.")
+		} else {
+			enc.Encode(Done)
+			fmt.Println("work done.")
 		}
-		// fmt.Println(stdout.String())
-		enc := gob.NewEncoder(conn)
-		enc.Encode(Done)
-		// send(SERVER, Finish)
-		fmt.Println("work done.")
 	}
 }
 

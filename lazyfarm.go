@@ -97,7 +97,9 @@ func listen() {
 		var msgtype string
 		err = decoder.Decode(&msgtype)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("warn : unknown data come in -")
+			log.Println(err)
+			continue
 		}
 		switch msgtype {
 		case "job":
@@ -137,7 +139,7 @@ func handleJob(job *Job) {
 	for _, t := range tasks {
 		fmt.Printf("%v\n", t)
 		worker_address := findWorker()
-		sendTask(t, worker_address)
+		go sendTask(t, worker_address, job.MaximumRetry)
 	}
 }
 
@@ -161,30 +163,47 @@ func findWorker() string {
 	return worker_address
 }
 
-func sendTask(task Task, worker_address string) {
-	// send task to worker
-	out, err := net.Dial("tcp", worker_address)
-	encoder := gob.NewEncoder(out)
-	err = encoder.Encode(task)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("send task to %v : %v\n", worker_address, task)
+func sendTask(task Task, worker_address string, maxretry int) {
+	// todo : how to return log? with return statement or with channel?
+	retry := 0
+	for {
+		// send task to worker
+		out, err := net.Dial("tcp", worker_address)
+		encoder := gob.NewEncoder(out)
+		err = encoder.Encode(task)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("send task to %v : %v\n", worker_address, task)
 
-	// wait for result
-	var result Status
+		// wait for result
+		var result Status
 
-	decoder := gob.NewDecoder(out)
-	err = decoder.Decode(&result)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if result == Done {
-		fmt.Println("task finished : ", worker_address)
-	} else {
-		fmt.Println("task failed for some reason : ", worker_address)
-	}
+		decoder := gob.NewDecoder(out)
+		err = decoder.Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	// let our worker back
-	workerStackChan <- WorkerStackMsg{Type:"push", WorkerAddress:worker_address}
+		// let our worker back
+		workerStackChan <- WorkerStackMsg{Type:"push", WorkerAddress:worker_address}
+
+		// see the result
+		if result == Done {
+			fmt.Println("task finished : ", worker_address)
+			return
+		} else {
+			fmt.Println("task failed for some reason : ", worker_address)
+			// check we can retry
+			if retry >= maxretry {
+				fmt.Println("exceeded max retry. task failed.")
+				return
+			} else {
+				retry++
+				fmt.Printf("retry %v\n", retry)
+				worker_address = findWorker()
+				continue
+			}
+		}
+	}
 }
