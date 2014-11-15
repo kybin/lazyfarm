@@ -17,10 +17,12 @@ func main() {
 	var framestr string
 	var server string
 	var maxretry int
+	var broadcast bool
 	flag.StringVar(&cmd, "cmd", "", "render command. If {frame} specifier in the command, it need frames flag")
 	flag.StringVar(&framestr, "frames", "", "frames for render")
 	flag.StringVar(&server, "server", "", "server address")
 	flag.IntVar(&maxretry, "maxretry", 1, "maximum retry for the job")
+	flag.BoolVar(&broadcast, "broadcast", false, "if the value is true, every worker will do the job")
 	flag.Parse()
 	fmt.Println(server)
 	if server == "" {
@@ -57,6 +59,7 @@ func main() {
 		Cmd : cmd,
 		Frames : frames,
 		MaximumRetry : maxretry,
+		Broadcast :broadcast,
 	}
 	fmt.Println(r)
 	conn, err := net.Dial("tcp", server)

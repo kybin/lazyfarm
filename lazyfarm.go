@@ -11,6 +11,7 @@ import (
 )
 
 var workerStackChan = make(chan WorkerStackMsg)
+var loginWorkerList = make([]*Worker, 0)
 
 func main() {
 	go workerStack()
@@ -22,6 +23,26 @@ func main() {
 	}
 }
 
+func addLoginWorker(w *Worker) {
+	loginWorkerList = append(loginWorkerList, w)
+}
+
+func removeLoginWorker(w *Worker) {
+	found := -1
+	for i, lw := range loginWorkerList {
+		if lw == w {
+			found = i
+			break
+		}
+	}
+	if found == -1 {
+		log.Fatal("user not exists, or already log out")
+	} else {
+		loginWorkerList = append(loginWorkerList[:found], loginWorkerList[found+1:]...)
+	}
+}
+
+// workerStack handle 'available' worker. it's different from 'login' worker.
 func workerStack() {
 	stack := make([]string, 0)
 	for {
@@ -56,13 +77,16 @@ func workerStack() {
 	}
 }
 
+
 func handleWorker(worker *Worker) {
 	var msgtype string
 
 	switch worker.Status {
 	case Login:
+		addLoginWorker(worker)
 		msgtype = "push"
 	case Logout:
+		removeLoginWorker(worker)
 		msgtype = "delete"
 	default:
 		log.Fatal("unknown status")
@@ -129,16 +153,26 @@ func listen() {
 
 func handleJob(job *Job) {
 	fmt.Printf("job added - %v\n", job)
+
 	// separate it to tasks
 	tasks, err := jobToTasks(job)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, t := range tasks {
-		fmt.Printf("%v\n", t)
-		worker_address := findWorker()
-		go sendTask(t, worker_address, job.MaximumRetry)
+	if job.Broadcast {
+		for _, w := range loginWorkerList {
+			for _, t := range tasks {
+				fmt.Printf("%v\n", t)
+				go sendTask(t, w.Address, job.MaximumRetry)
+			}
+		}
+	} else {
+		for _, t := range tasks {
+			fmt.Printf("%v\n", t)
+			worker_address := findWorker()
+			go sendTask(t, worker_address, job.MaximumRetry)
+		}
 	}
 }
 

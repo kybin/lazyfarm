@@ -31,6 +31,7 @@ type Job struct {
 	Started time.Time
 	Ended time.Time
 	MaximumRetry int
+	Broadcast bool
 }
 
 func (j *Job) NFrame() int {
