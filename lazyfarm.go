@@ -33,9 +33,8 @@ func workerStack() {
 		case "pop":
 			address := ""
 			if len(stack) != 0 {
-				last := len(stack)-1
-				address = stack[last]
-				stack = stack[:last]
+				address = stack[0]
+				stack = stack[1:]
 			}
 			msg.Reply <- address
 		case "delete":
