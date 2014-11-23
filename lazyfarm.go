@@ -8,6 +8,7 @@ import (
 	"net"
 	"encoding/gob"
 	"errors"
+	"sync"
 )
 
 var workerStackChan = make(chan WorkerStackMsg)
@@ -58,6 +59,20 @@ func workerStack() {
 				stack = stack[1:]
 			}
 			msg.Reply <- address
+		case "find":
+			di := -1
+			for i, v := range stack {
+				if (v == msg.WorkerAddress) {
+					di = i
+					break
+				}
+			}
+			if di == -1 {
+				msg.Reply <- ""
+			} else {
+				msg.Reply <- stack[di]
+				stack = append(stack[:di], stack[di+1:]...)
+			}
 		case "delete":
 			di := -1
 			for i, v := range stack {
@@ -161,12 +176,30 @@ func handleJob(job *Job) {
 	}
 
 	if job.Broadcast {
+		var wg sync.WaitGroup
 		for _, w := range loginWorkerList {
-			for _, t := range tasks {
-				fmt.Printf("%v\n", t)
-				go sendTask(t, w.Address, job.MaximumRetry)
-			}
+			wg.Add(1)
+			go func(worker_address string, tasks []Task, maxretry int){
+				defer wg.Done()
+
+				for _, t := range tasks {
+					fmt.Printf("%v\n", t)
+					// wait until the worker is available
+					for {
+						reply := make(chan string)
+						workerStackChan <- WorkerStackMsg{Type:"find", WorkerAddress:worker_address, Reply:reply}
+						if <-reply != "" {
+							break
+						}
+					}
+					// we are not using 'go' command here. because next task should served by same worker.
+					sendTask(t, worker_address, maxretry)
+				}
+			}(w.Address, tasks, job.MaximumRetry)
 		}
+		// we should wait every worker done the same job completly.
+		wg.Wait()
+
 	} else {
 		for _, t := range tasks {
 			fmt.Printf("%v\n", t)
